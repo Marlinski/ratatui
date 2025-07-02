@@ -604,44 +604,36 @@ where
     ///
     /// ```rust,ignore
     /// use ratatui::{Terminal, TerminalOptions, Viewport};
-    /// 
+    ///
     /// let mut terminal = Terminal::with_options(backend, TerminalOptions {
     ///     viewport: Viewport::Inline(8),
     /// })?;
-    /// 
+    ///
     /// // Later, resize the viewport to 12 lines
     /// terminal.set_viewport_height(12)?;
     /// ```
     pub fn set_viewport_height(&mut self, new_height: u16) -> io::Result<()> {
-        match &mut self.viewport {
-            Viewport::Inline(height) => {
-                if *height != new_height {
-                    *height = new_height;
-                    
-                    // Keep the same position but update the height
-                    let new_viewport_area = Rect {
-                        x: self.viewport_area.x,
-                        y: self.viewport_area.y,
-                        width: self.viewport_area.width,
-                        height: new_height,
-                    };
-                    
-                    // Clear the old viewport area first
-                    self.clear()?;
-                    
-                    // Update the viewport area and resize buffers
-                    self.set_viewport_area(new_viewport_area);
-                    
-                    // Clear the new viewport area to ensure clean state
-                    self.clear()?;
+        let Viewport::Inline(height) = &mut self.viewport else { return Ok(()) };
+        if *height == new_height { return Ok(()) }
+
+        let old_height = std::mem::replace(height, new_height);
+        self.clear()?;
+
+        let new_y = match new_height.cmp(&old_height) {
+            std::cmp::Ordering::Greater => {
+                let overflow = (self.viewport_area.y + new_height).saturating_sub(self.last_known_area.height);
+                if overflow > 0 {
+                    self.scroll_up(overflow)?;
+                    self.viewport_area.y.saturating_sub(overflow)
+                } else {
+                    self.viewport_area.y
                 }
-                Ok(())
             }
-            _ => {
-                // For non-inline viewports, this operation has no effect
-                Ok(())
-            }
-        }
+            _ => self.viewport_area.y,
+        };
+
+        self.set_viewport_area(Rect { height: new_height, y: new_y, ..self.viewport_area });
+        self.clear()
     }
 
 
