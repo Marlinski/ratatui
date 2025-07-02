@@ -295,6 +295,11 @@ required-features = ["crossterm"]
 doc-scrape-examples = true
 
 [[example]]
+name = "resizable_inline"
+required-features = ["crossterm"]
+doc-scrape-examples = true
+
+[[example]]
 name = "layout"
 required-features = ["crossterm"]
 doc-scrape-examples = true
